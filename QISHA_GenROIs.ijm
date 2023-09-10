@@ -14,7 +14,7 @@
 run("Close All");	
  
 // Parameters for analysis
-minSize = 1500;				// Minimum area of an ROI to include in analysis (based on a 1024x1024 image at 40x--get the NA)
+minSize = 2000;				// Minimum area of an ROI to include in analysis (based on a 1024x1024 image at 40x--get the NA)
 maxSize = 15000;
 minCirc = 0.65;				// Minimum circularity to include in analysis 
  
