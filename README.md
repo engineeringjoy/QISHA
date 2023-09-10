@@ -17,3 +17,5 @@ Workflow:
 2. QISHA_Segment.ipynb - This Python notebooks segments the seed images from step #1 and generates a collection of files to document the identified masks. This includes a "Flows" image that will be read by QISHA_GenROIs.ijm
 
 3. QISHA_GenROIS.ijm - This ImageJ code processes the Flows image and generates a list of acceptable ROIs that are saved as a .zip file for use in downstream analysis. It also saves an image of the identified ROIs. 
+
+4. QISHA_ROIPunctaCounter.ijm - This ImageJ code reads in the ROI zip file for a specific image and uses that ROI list to count puncta on a single cell level. Data is stored as a .csv file for downstream analysis. 
