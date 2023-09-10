@@ -27,7 +27,7 @@ chnsAna = Array.concat("0");
 // Specify which channels to exclude from process
 chnsEx = Array.concat("1","2","3");
 // Minimum prominence for maxima detection
-minProm = 4000;
+minProm = 2000;
 // Sigma for Gaussian Filter for reducing false positives due to inclusion bodies
 sigma = 2;
 
