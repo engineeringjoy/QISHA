@@ -108,10 +108,10 @@ while (iterate > 0) {
 	run("Smooth");
 	run("Despeckle");
 	run("Gaussian Blur...", "sigma=3");
-	run("Maximum...","radius=10");
-	run("Mean...", "radius=10");
-	run("Subtract Background...", "rolling=300");
+	run("Maximum...","radius=5");
+	run("Mean...", "radius=5");
 	run("Bin...", "x=2 y=2 bin=Average");
+	run("Subtract Background...", "rolling=100");
 	run("Flatten");
 	run("8-bit");
 	// Save the seedimage
