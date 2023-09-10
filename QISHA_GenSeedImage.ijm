@@ -22,31 +22,35 @@
  */
 
 /* 
- ************************** MACRO QISHA_GenSeedImage.ijm ******************************
+ ************************** QISHA_GenSeedImage.ijm ******************************
  */
  
-// *** SELECT FILE TO PROCESS *** 
+// *** SETUP *** 
 // Housekeeping: Close irrelevant images that might be open
-run("Close All");	
+run("Close All");
+// Specify which channels to use for generating the seed image
+chnsMP = Array.concat("1","2");
+// Specify which channels to exclude from process
+chnsEx = Array.concat("0","3");
+
 
 // *** GET USER CHOICE ***
-
 // Ask the user if they want to run in batch mode or if they want to open a 
 // . single image. Batch mode will mean iterating through all of the files in a foler. 
 // . Single file mode will mean allowing the user to choose a single file to open
 Dialog.create("Welcome to QISHA_GenSeedImage.ijm");
 Dialog.addMessage("This macro open your Zstacks and generate seed images for segmentation with Cellpose.");
 Dialog.addChoice("Do you want to open a single file or run batch mode for multiple files?", Array.concat("Single File", "Batch Mode"));
-Dialog.addString("ExperimentNo", "QIA_###", 7);
-Dialog.addNumber("Segmentation Channel", 1);
-Dialog.addNumber("Starting Slice for Substack", 1);
-Dialog.addNumber("Ending Slice for Substack", 20);
 Dialog.show();
 choiceRun = Dialog.getChoice();
-expID = Dialog.getString();
-ch = Dialog.getNumber();
-ss = Dialog.getNumber();
-fs = Dialog.getNumber();
+
+// Kick off - Inform the user about setup for BioFormats Importers
+Dialog.create("Choose file to process");
+Dialog.addMessage("Please select the image to process on the following screen.\n"+
+				  "For BioFormats Importer, 'Split Channels' and 'Autoscale' should be the only checked box.\n"+
+				  "and all default settings should be used. "+
+				  "Select cancel to exit.");
+Dialog.show();
 
 // Set iteration number based on the user choice for run mode
 if (choiceRun == "Single File"){
@@ -59,14 +63,11 @@ init = 0; 	 // Variable used for tracking loop iteration
 // If Iteration number is greater than 1, continue asking the user to open a new file  
 // Settting the truth test to 2 ensures the loop will run at least once regardless of choice.
 while (iterate > 0) {
-	// Kick off - Ask the user to choose the file and begin process
-	Dialog.create("Choose file to process");
-	Dialog.addMessage("Please select the image to process on the following screen.\n"+
-					  "Make sure to unselect all boxes and use default settings.\n"+
-					  "Select cancel to exit.");
-	Dialog.show();
+	// *** SELECT FILE TO PROCESS *** 
 	run("Bio-Formats Importer");
 	self = getInfo("image.filename");
+	// fnBase here is specific to JF's filenaming system. Adjust or comment out if not applicable.
+	fnBase = substring(self,0,lastIndexOf(self,".01.40x."));
 	selfDir =getInfo("image.directory");
 	parent = substring(selfDir, 0,lastIndexOf(selfDir, "RawImageFiles"));
 	dirSI = parent+"SeedImages/";
@@ -76,30 +77,56 @@ while (iterate > 0) {
 		File.makeDirectory(dirSI);
 	}
 	
+	// Iterate through exlcuded channels and close
+	for (i = 0; i < lengthOf(chnsEx); i++) {
+		selectWindow(self+" - C="+toString(chnsEx[i]));
+		close();
+	}
+	
+	// Iterate through each channel in the z-stack to generate max projection
+	for (i = 0; i < lengthOf(chnsMP); i++) {
+		selectWindow(self+" - C="+toString(chnsMP[i]));
+		run("Z Project...", "projection=[Max Intensity]");
+		selectWindow(self+" - C="+toString(chnsMP[i]));
+		close();
+	}
+	
+	// Make a string of image names to feed into to Merge Channels
+	strArr = newArray(lengthOf(chnsMP));
+	for (i = 0; i < lengthOf(chnsMP); i++) {
+		strArr[i] = "c"+(i+1)+"=[MAX_"+self+" - C="+(i+1)+"]";
+	}
+	str = String.join(strArr, " ");
+	
+	// Create a merged image from the max projections
+	run("Merge Channels...", str+" create");
+	//selectImage("Composite");
 	// Begin processing
-	getDimensions(width, height, channels, slices, frames);
-	run("Make Substack...", "channels="+ch+" slices="+ss+"-"+fs);
-	close("\\Others");
-	run("Z Project...", "projection=[Sum Slices]");
+	//run("Flatten");
+	run("Enhance Contrast", "saturated=0.35");
+	run("Apply LUT");
 	run("Smooth");
 	run("Despeckle");
-	run("Gaussian Blur...", "sigma=2");
-	
+	run("Gaussian Blur...", "sigma=3");
+	run("Maximum...","radius=10");
+	run("Mean...", "radius=10");
+	run("Subtract Background...", "rolling=300");
+	run("Bin...", "x=2 y=2 bin=Average");
+	run("Flatten");
+	run("8-bit");
 	// Save the seedimage
-	saveAs("PNG", dirSI+self+".SI.png");
-	close();
+	saveAs("PNG", dirSI+fnBase+".SeedImage.png");
 	
 	// Be sure to close open images before proceeding to the next one
 	run("Close All");	
 	
 	// Wrap things up
-	//dirMain = ;
-	if (iterate == 1){
+	Dialog.create("Contine");
+	Dialog.addChoice("Continue generating seed images?", Array.concat("Yes", "No"));
+	Dialog.show();
+	choiceCont = Dialog.getChoice();
+	
+	if (choiceCont == "No") {
 		exit;
-	} 
-	iterate = iterate+1;
-	// Engineering a safety for the while loop so that it exits automatically after 20 runs. 
-	if (iterate == 20){
-		iterate = 0;
 	}
 }
