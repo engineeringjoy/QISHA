@@ -15,11 +15,12 @@ run("Close All");
  
 // Parameters for analysis
 minSize = 1500;				// Minimum area of an ROI to include in analysis (based on a 1024x1024 image at 40x--get the NA)
+maxSize = 15000;
 minCirc = 0.65;				// Minimum circularity to include in analysis 
  
 // *** SELECT FILE TO PROCESS *** 
-Dialog.create("Welcome to QISHA_GenROIs.ijm");
-Dialog.addMessage("Select the file to process.");
+Dialog.create("Welcome");
+Dialog.addMessage("Welcome to QISHA_GenROIs.ijm\nSelect the Flow image to process.");
 Dialog.show();
 impath = File.openDialog("Choose image to open");    	// Ask user to find file 
 open(impath);											// Open the image	
