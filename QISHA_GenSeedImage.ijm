@@ -32,7 +32,11 @@ run("Close All");
 chnsMP = Array.concat("1","2");
 // Specify which channels to exclude from process
 chnsEx = Array.concat("0","3");
-
+// Specify which slices to use
+ssSt = 1;
+ssEnd = 20;
+// Specify radius for Gaussian Filter
+sigma = 4;
 
 // *** GET USER CHOICE ***
 // Ask the user if they want to run in batch mode or if they want to open a 
@@ -83,37 +87,47 @@ while (iterate > 0) {
 		close();
 	}
 	
-	// Iterate through each channel in the z-stack to generate max projection
-	for (i = 0; i < lengthOf(chnsMP); i++) {
-		selectWindow(self+" - C="+toString(chnsMP[i]));
+	if (lengthOf(chnsMP)>1) {
+		// Iterate through each channel in the z-stack to generate max projection
+		for (i = 0; i < lengthOf(chnsMP); i++) {
+			selectWindow(self+" - C="+toString(chnsMP[i]));
+			run("Make Substack...", "slices="+ssSt+"-"+ssEnd);
+			run("Z Project...", "projection=[Max Intensity]");
+			rename("Max_SS_c"+chnsMP[i]);
+			selectWindow(self+" - C="+toString(chnsMP[i]));
+			selectWindow("Substack ("+ssSt+"-"+ssEnd+")");
+			close();
+		}
+		
+		// Make a string of image names to feed into to Merge Channels
+		strArr = newArray(lengthOf(chnsMP));
+		for (i = 0; i < lengthOf(chnsMP); i++) {
+			//strArr[i] = "c"+(i+1)+"=[MAX_"+self+" - C="+(i+1)+"]";
+			strArr[i] = "c"+(i+1)+"=Max_SS_c"+chnsMP[i];
+		}
+		str = String.join(strArr, " ");
+		// Create a merged image from the max projections
+		run("Merge Channels...", str+" create");
+	}else{
 		run("Z Project...", "projection=[Max Intensity]");
-		selectWindow(self+" - C="+toString(chnsMP[i]));
+		selectWindow(self+" - C="+toString(chnsMP[0]));
 		close();
 	}
 	
-	// Make a string of image names to feed into to Merge Channels
-	strArr = newArray(lengthOf(chnsMP));
-	for (i = 0; i < lengthOf(chnsMP); i++) {
-		strArr[i] = "c"+(i+1)+"=[MAX_"+self+" - C="+(i+1)+"]";
-	}
-	str = String.join(strArr, " ");
-	
-	// Create a merged image from the max projections
-	run("Merge Channels...", str+" create");
-	//selectImage("Composite");
 	// Begin processing
 	//run("Flatten");
 	run("Enhance Contrast", "saturated=0.35");
 	run("Apply LUT");
 	run("Smooth");
 	run("Despeckle");
-	run("Gaussian Blur...", "sigma=3");
-	run("Maximum...","radius=5");
-	run("Mean...", "radius=5");
+	run("Gaussian Blur...", "sigma="+sigma);
+	//run("Maximum...","radius=5");
+	//run("Mean...", "radius=5");
 	run("Bin...", "x=2 y=2 bin=Average");
 	run("Subtract Background...", "rolling=100");
 	run("Flatten");
 	run("8-bit");
+	
 	// Save the seedimage
 	saveAs("PNG", dirSI+fnBase+".SeedImage.png");
 	

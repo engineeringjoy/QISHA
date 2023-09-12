@@ -16,20 +16,29 @@
 /* 
  ************************** QISHA_ROIPunctaCounter.ijm ******************************
  */
- 
+
+
+
 // *** SETUP *** 
 // Housekeeping: Close irrelevant images that might be open
 run("Close All");
 roiManager("delete");
 run("Clear Results");
+run("Set Measurements...", "area mean standard min redirect=None decimal=3");
 // Specify which channels in the stack to analyze 
 chnsAna = Array.concat("0");
 // Specify which channels to exclude from process
 chnsEx = Array.concat("1","2","3");
 // Minimum prominence for maxima detection
 minProm = 2000;
+// Specify rolling ball radius for background subtration
+rolling = 8;
 // Sigma for Gaussian Filter for reducing false positives due to inclusion bodies
 sigma = 2;
+// Substack range MUST be the same as what was used in GenSeedImage.ijm
+// Specify which slices to use
+ssSt = 1;
+ssEnd = 20
 
 // *** SELECT FILE TO PROCESS *** 
 Dialog.create("Choose file to process");
@@ -69,39 +78,36 @@ for (i = 0; i < lengthOf(chnsEx); i++) {
 	close();
 }
 
-/* Not sure if this is really necessary or a good idea yet
-// Set parameters for generating the max projection
-getDimensions(width, height, channels, slices, frames);
-if (slices > 4) {
-	ssSt = 1;
-	ssEnd = slices-2;
-}else {
-	ssSt = 0;
-	ssEnd = slices;
-}
-run("Make Substack...", "slices="+ssSt+"-"+ssEnd);
-*/
-
 // Preprocess & save analyzed image for documentation purposes
-
+run("Make Substack...", "slices="+ssSt+"-"+ssEnd);
 run("Z Project...", "projection=[Max Intensity]");
 run("Bin...", "x=2 y=2 bin=Average");
-run("Subtract Background...", "rolling=100");
+run("Subtract Background...", "rolling="+rolling);
 run("Gaussian Blur...", "sigma="+sigma);
 saveAs("PNG", dirPI+fnBase+".AnalyzedImage.png");
 close("\\Others");
 
-// Load the ROIs
+// Load the ROIs and adjust
 roiManager("Open", dirROIs+fnBase+".ROIs.zip");
 
 // Beging counting maxima
 n = roiManager('count');
 for (i = 0; i < n; i++) {
     roiManager('select', i);
-    run("Find Maxima...", "prominence="+minProm+" strict exclude output=Count");
+    run("Translate... ", "x=-5 y=-20");
+    run("Find Maxima...", "prominence="+minProm+" strict output=Count");
     row = getValue("results.count")-1;
     setResult("ImageName", row, fnBase);
     setResult("ROI_ID", row, toString(i+1));
+    
+    // Get & store statistics on pixel distributions
+    getStatistics(area, mean, min, max, std, histogram);
+    setResult("Area", row, area);
+    setResult("Mean", row, mean);
+    setResult("Min", row, min);
+    setResult("Max", row, max);
+    setResult("Std", row, std);
+    
 }
 
 // Save results on each run in case macro crashes
